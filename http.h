@@ -36,13 +36,13 @@ extern "C" {
  *  realloc_scratch - reallocate memory, cannot fail. There will only
  *                    be one scratch buffer. Implemnentation may take
  *                    advantage of this fact.
- *  body - handle HTTP response body data
+ *  body - handle HTTP response body data, returns bytes consumed
  *  header - handle an HTTP header key/value pair
  *  code - handle the HTTP status code for the response
  */
 struct http_funcs {
     void* (*realloc_scratch)(void* opaque, void* ptr, int size);
-    void (*body)(void* opaque, const char* data, int size);
+    int (*body)(void* opaque, const char* data, int size);
     void (*header)(void* opaque, const char* key, int nkey, const char* value, int nvalue);
     void (*code)(void* opqaue, int code);
 };

@@ -106,10 +106,13 @@ static void* response_realloc(void* opaque, void* ptr, int size)
     return realloc(ptr, size);
 }
 
-static void response_body(void* opaque, const char* data, int size)
+static int response_body(void* opaque, const char* data, int size)
 {
     HttpResponse* response = (HttpResponse*)opaque;
+    if (size > 5)
+      size = 5;
     response->body.insert(response->body.end(), data, data + size);
+    return size;
 }
 
 static void response_header(void* opaque, const char* ckey, int nkey, const char* cvalue, int nvalue)

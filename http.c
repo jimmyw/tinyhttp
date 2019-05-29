@@ -32,9 +32,9 @@
 #include "header.h"
 #include "chunk.h"
 
-static void append_body(struct http_roundtripper* rt, const char* data, int ndata)
+static int append_body(struct http_roundtripper* rt, const char* data, int ndata)
 {
-    rt->funcs.body(rt->opaque, data, ndata);
+    return rt->funcs.body(rt->opaque, data, ndata);
 }
 
 static void grow_scratch(struct http_roundtripper* rt, int size)
@@ -167,27 +167,31 @@ int http_data(struct http_roundtripper* rt, const char* data, int size, int* rea
 
         case http_roundtripper_chunk_data: {
             const int chunksize = min(size, rt->contentlength);
-            append_body(rt, data, chunksize);
-            rt->contentlength -= chunksize;
-            size -= chunksize;
-            data += chunksize;
+            const int consumed = append_body(rt, data, chunksize);
+            rt->contentlength -= consumed;
+            size -= consumed;
+            data += consumed;
 
             if (rt->contentlength == 0) {
                 rt->contentlength = 1;
                 rt->state = http_roundtripper_chunk_header;
             }
+            if (consumed != chunksize)
+              goto out;
         }
         break;
 
         case http_roundtripper_raw_data: {
             const int chunksize = min(size, rt->contentlength);
-            append_body(rt, data, chunksize);
-            rt->contentlength -= chunksize;
-            size -= chunksize;
-            data += chunksize;
+            const int consumed = append_body(rt, data, chunksize);
+            rt->contentlength -= consumed;
+            size -= consumed;
+            data += consumed;
 
             if (rt->contentlength == 0)
                 rt->state = http_roundtripper_close;
+            if (consumed != chunksize)
+              goto out;
         }
         break;
 
@@ -195,9 +199,11 @@ int http_data(struct http_roundtripper* rt, const char* data, int size, int* rea
             if (size == 0)
                 rt->state = http_roundtripper_close;
             else {
-                append_body(rt, data, size);
-                size -= size;
-                data += size;
+                const int consumed = append_body(rt, data, size);
+                size -= consumed;
+                data += consumed;
+                if (consumed != size)
+                  goto out;
             }
         }
         break;
@@ -216,7 +222,7 @@ int http_data(struct http_roundtripper* rt, const char* data, int size, int* rea
             return 0;
         }
     }
-
+out:
     *read = initial_size - size;
     return 1;
 }
